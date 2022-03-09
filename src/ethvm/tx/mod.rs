@@ -454,7 +454,7 @@ impl ExecRet {
             from,
             to,
             block_gas_used: Default::default(),
-            tx_gas_used: self.fee_used,
+            tx_gas_used: self.gas_used,
             contract_addr,
             state_root: None,
             status_code: self.success,
