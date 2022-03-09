@@ -2,10 +2,10 @@
 name = "ovr"
 version = "0.3.1"
 edition = "2021"
-authors = ["OVR development team", "fanhui.x@gmail.com"]
-description = "Official implementations of the Overeality project."
-homepage = "https://github.com/ccmlm/OVR"
-repository = "https://github.com/ccmlm/OVR"
+authors = ["Overealityio", "hui@overeality.io"]
+description = "Official implementations of the Overeality blockchain."
+homepage = "https://github.com/Overealityio/OVR"
+repository = "https://github.com/Overealityio/OVR"
 keywords = ["blockchain", "defi", "state"]
 license = "MIT"
 
@@ -43,7 +43,7 @@ rlp = "0.5.1"
 sha3 = "0.10.0"
 hex = "0.4.3"
 slices = "0.2.0"
-sp-io = "4.0.0"
+sp-io = "6.0.0"
 base64 = "0.13.0"
 
 jsonrpc-http-server = "18.0"
@@ -56,15 +56,14 @@ primitive-types = { version = "0.10.1", default-features = false, features = ["r
 ethereum-types = "0.12"
 eth-utils = "0.2.0"
 
-fevm = { package = "pallet-evm", git = "https://github.com/ccmlm/frontier", tag = "ovr-p1" }
-fevm-precompile-blake2 = { package = "pallet-evm-precompile-blake2", git = "https://github.com/ccmlm/frontier", tag = "ovr-p1" }
-fevm-precompile-bn128 = { package = "pallet-evm-precompile-bn128", git = "https://github.com/ccmlm/frontier", tag = "ovr-p1" }
-fevm-precompile-curve25519 = { package = "pallet-evm-precompile-curve25519", git = "https://github.com/ccmlm/frontier", tag = "ovr-p1" }
-fevm-precompile-ed25519 = { package = "pallet-evm-precompile-ed25519", git = "https://github.com/ccmlm/frontier", tag = "ovr-p1" }
-fevm-precompile-modexp = { package = "pallet-evm-precompile-modexp", git = "https://github.com/ccmlm/frontier", tag = "ovr-p1" }
-fevm-precompile-sha3fips = { package = "pallet-evm-precompile-sha3fips", git = "https://github.com/ccmlm/frontier", tag = "ovr-p1" }
-fevm-precompile-simple = { package = "pallet-evm-precompile-simple", git = "https://github.com/ccmlm/frontier", tag = "ovr-p1" }
-# fevm-precompile-dispatch = { package = "pallet-evm-precompile-dispatch", git = "https://github.com/ccmlm/frontier", tag = "ovr-p1" }
+fevm = { package = "fp-evm", git = "https://github.com/Overealityio/frontier", tag = "mini" }
+fevm-precompile-blake2 = { package = "pallet-evm-precompile-blake2", git = "https://github.com/Overealityio/frontier", tag = "mini" }
+fevm-precompile-bn128 = { package = "pallet-evm-precompile-bn128", git = "https://github.com/Overealityio/frontier", tag = "mini" }
+fevm-precompile-curve25519 = { package = "pallet-evm-precompile-curve25519", git = "https://github.com/Overealityio/frontier", tag = "mini" }
+fevm-precompile-ed25519 = { package = "pallet-evm-precompile-ed25519", git = "https://github.com/Overealityio/frontier", tag = "mini" }
+fevm-precompile-modexp = { package = "pallet-evm-precompile-modexp", git = "https://github.com/Overealityio/frontier", tag = "mini" }
+fevm-precompile-sha3fips = { package = "pallet-evm-precompile-sha3fips", git = "https://github.com/Overealityio/frontier", tag = "mini" }
+fevm-precompile-simple = { package = "pallet-evm-precompile-simple", git = "https://github.com/Overealityio/frontier", tag = "mini" }
 
 # deps of web3-rpc
 rustc-hex = "2.1.0"

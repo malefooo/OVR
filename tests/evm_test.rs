@@ -6,7 +6,7 @@ use ethereum::{
     TransactionV2,
 };
 use evm::backend::ApplyBackend;
-use fevm::ExitReason;
+use evm::ExitReason;
 use ovr::{
     ethvm::{
         impls::backend::OvrBackend,
