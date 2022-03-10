@@ -49,7 +49,7 @@ $cmd -d -n $env_name 2>/dev/null
 $cmd -c -n $env_name -N 7 \
     --inital-bytecode-path ${c_results_path}/OR.bytecode \
     --inital-salt "ORToken" >/dev/null || exit 1
-sleep 3
+sleep 20
 $cmd -S -n $env_name >/dev/null || exit 1
 
 for cfg in $(find ${env_path} -name "config.toml"); do
