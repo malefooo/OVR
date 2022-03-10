@@ -54,16 +54,7 @@ evm = { version = "0.33.1", default-features = false, features = ["with-serde"] 
 ethereum = { version = "0.11.1", default-features = false, features = ["with-serde"] }
 primitive-types = { version = "0.10.1", default-features = false, features = ["rlp", "byteorder", "serde"] }
 ethereum-types = "0.12"
-eth-utils = "0.2.0"
-
-fevm = { package = "fp-evm", git = "https://github.com/Overealityio/frontier", tag = "mini" }
-fevm-precompile-blake2 = { package = "pallet-evm-precompile-blake2", git = "https://github.com/Overealityio/frontier", tag = "mini" }
-fevm-precompile-bn128 = { package = "pallet-evm-precompile-bn128", git = "https://github.com/Overealityio/frontier", tag = "mini" }
-fevm-precompile-curve25519 = { package = "pallet-evm-precompile-curve25519", git = "https://github.com/Overealityio/frontier", tag = "mini" }
-fevm-precompile-ed25519 = { package = "pallet-evm-precompile-ed25519", git = "https://github.com/Overealityio/frontier", tag = "mini" }
-fevm-precompile-modexp = { package = "pallet-evm-precompile-modexp", git = "https://github.com/Overealityio/frontier", tag = "mini" }
-fevm-precompile-sha3fips = { package = "pallet-evm-precompile-sha3fips", git = "https://github.com/Overealityio/frontier", tag = "mini" }
-fevm-precompile-simple = { package = "pallet-evm-precompile-simple", git = "https://github.com/Overealityio/frontier", tag = "mini" }
+eth-utils = { version = "0.3.1", features = ["with_common_precompiles"] }
 
 # deps of web3-rpc
 rustc-hex = "2.1.0"

@@ -2,17 +2,19 @@
 //! # Precompiled components(contracts)
 //!
 
-use evm::executor::stack::PrecompileFn;
-use fevm::Precompile;
-use fevm_precompile_blake2::Blake2F;
-use fevm_precompile_bn128::{Bn128Add, Bn128Mul, Bn128Pairing};
-use fevm_precompile_curve25519::{Curve25519Add, Curve25519ScalarMul};
-use fevm_precompile_ed25519::Ed25519Verify;
-use fevm_precompile_modexp::Modexp;
-use fevm_precompile_sha3fips::Sha3FIPS256;
-use fevm_precompile_simple::{
-    ECRecover, ECRecoverPublicKey, Identity, Ripemd160, Sha256,
+use eth_utils::{
+    ovr_evm_precompile_blake2::Blake2F,
+    ovr_evm_precompile_bn128::{Bn128Add, Bn128Mul, Bn128Pairing},
+    ovr_evm_precompile_curve25519::{Curve25519Add, Curve25519ScalarMul},
+    ovr_evm_precompile_ed25519::Ed25519Verify,
+    ovr_evm_precompile_modexp::Modexp,
+    ovr_evm_precompile_sha3fips::Sha3FIPS256,
+    ovr_evm_precompile_simple::{
+        ECRecover, ECRecoverPublicKey, Identity, Ripemd160, Sha256,
+    },
+    ovr_fp_evm::Precompile,
 };
+use evm::executor::stack::PrecompileFn;
 use once_cell::sync::Lazy;
 use primitive_types::H160;
 use ruc::*;
