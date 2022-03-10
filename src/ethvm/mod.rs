@@ -35,16 +35,29 @@ pub struct State {
 }
 
 impl State {
-    pub fn call_contract(
+    pub fn contract_handle(
         &self,
         branch_name: BranchName,
         req: CallRequest,
         bn: Option<BlockNumber>,
     ) -> Result<CallContractResp> {
+        // Operation Type
+        enum Operation {
+            Call,
+            Create,
+        }
+
+        // Determine what type of operation is being performed based on the parameter to in the request object
+        let (operation, address) = if let Some(to) = req.to {
+            (Operation::Call, to)
+        } else {
+            (Operation::Create, H160::default())
+        };
+
         let caller = req.from.unwrap_or_default();
-        let address = req.to.unwrap_or_default();
         let value = req.value.unwrap_or_default();
         let data = req.data.unwrap_or_default();
+
         // This parameter is used as the divisor and cannot be 0
         let gas_price = req.gas_price.unwrap_or_else(U256::one).as_u64();
         let gas = if let Some(gas) = req.gas {
@@ -52,7 +65,7 @@ impl State {
         } else {
             u64::MAX
         };
-        let gas_limit = gas.checked_div(gas_price).unwrap();
+        let gas_limit = gas.checked_div(gas_price).unwrap(); //safe
 
         let height = block_number_to_height(bn, None, Some(self));
 
@@ -75,10 +88,17 @@ impl State {
         let mut executor =
             StackExecutor::new_with_precompiles(ovr_stack_state, &cfg, &precompiles);
 
-        let resp =
-            executor.transact_call(caller, address, value, data.0, gas_limit, vec![]);
+        let resp = match operation {
+            Operation::Call => {
+                executor.transact_call(caller, address, value, data.0, gas_limit, vec![])
+            }
+            Operation::Create => (
+                executor.transact_create(caller, value, data.0, gas_limit, vec![]),
+                vec![],
+            ),
+        };
 
-        ruc::d!(format!("{:?}", resp));
+        d!(format!("{:?}", resp));
 
         let cc_resp = CallContractResp {
             evm_resp: resp.0,
