@@ -16,7 +16,7 @@ RUN make lint
 # RUN make test
 
 RUN mkdir -p /root/.cargo/bin/
-RUN make build_release_rocksdb_online
+RUN make release_online
 RUN mkdir /binary
 RUN mv /root/.cargo/bin/ovrd /binary/ovrd
 
