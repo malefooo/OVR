@@ -67,7 +67,7 @@ fevm-precompile-simple = { package = "pallet-evm-precompile-simple", git = "http
 
 # deps of web3-rpc
 rustc-hex = "2.1.0"
-web3-rpc-core = { git = "https://github.com/ovr-defi/web3-rpc-core.git" }
+web3-rpc-core = { git = "https://github.com/Overealityio/web3-rpc-core.git" }
 byte-slice-cast = "1.2.0"
 
 [features]
