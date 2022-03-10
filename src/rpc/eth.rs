@@ -94,7 +94,7 @@ impl EthApi for EthApiImpl {
         let resp = self
             .state
             .evm
-            .call_contract(MAIN_BRANCH_NAME, req, bn)
+            .contract_handle(MAIN_BRANCH_NAME, req, bn)
             .map_err(|e| {
                 error::new_jsonrpc_error(
                     "call contract failed",
@@ -642,7 +642,7 @@ impl EthApi for EthApiImpl {
         let resp = self
             .state
             .evm
-            .call_contract(MAIN_BRANCH_NAME, req, bn)
+            .contract_handle(MAIN_BRANCH_NAME, req, bn)
             .map_err(|e| {
                 error::new_jsonrpc_error(
                     "call contract failed",
