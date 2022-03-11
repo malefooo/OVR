@@ -5,7 +5,8 @@ pub struct NetApiImpl {}
 
 impl NetApi for NetApiImpl {
     fn version(&self) -> BoxFuture<Result<String>> {
-        Box::pin(async { Ok(0.to_string()) })
+        let git_version = env!("VERGEN_GIT_SHA");
+        Box::pin(async { Ok(git_version.to_string()) })
     }
 
     fn peer_count(&self) -> BoxFuture<Result<PeerCount>> {
