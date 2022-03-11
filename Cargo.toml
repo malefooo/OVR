@@ -92,4 +92,4 @@ overflow-checks = false
 
 [build-dependencies]
 vergen = "6"
-ruc = { version = "1.0.7", features = ["cmd"] }
+ruc = "1.0.7"
