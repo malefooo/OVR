@@ -243,81 +243,61 @@ impl EthApi for EthApiImpl {
         let mut op_rb = None;
         for (height, block) in self.state.blocks.iter() {
             let chain_id = self.state.chain_id.get_value();
-            let web3_txs = match txs_to_web3_txs(&block, chain_id, height) {
-                Ok(v) => v,
-                Err(e) => return Box::pin(async { Err(e) }),
-            };
-
-            let tx_hashes = web3_txs.iter().map(|t| t.hash).collect::<Vec<H256>>();
-            let mut b = Block {
-                hash: None,
-                parent_hash: Default::default(),
-                uncles_hash: Default::default(),
-                author: Default::default(),
-                miner: Default::default(),
-                state_root: Default::default(),
-                transactions_root: Default::default(),
-                receipts_root: Default::default(),
-                number: None,
-                gas_used: Default::default(),
-                gas_limit: Default::default(),
-                extra_data: Default::default(),
-                logs_bloom: None,
-                timestamp: Default::default(),
-                difficulty: Default::default(),
-                total_difficulty: Default::default(),
-                seal_fields: vec![],
-                uncles: vec![],
-                transactions: BlockTransactions::Hashes(tx_hashes),
-                size: None,
-            };
 
             if block.header_hash.as_slice() == block_hash.as_bytes() {
+                let proposer = tm_proposer_to_evm_format(&block.header.proposer);
+
+                let receipt =
+                    if let Some((_, receipt)) = block.header.receipts.iter().last() {
+                        receipt.clone()
+                    } else {
+                        Default::default()
+                    };
+
+                // prev is null if block is 1
+                let parent_hash = if block.header.prev_hash.is_empty() {
+                    H256::default()
+                } else {
+                    block_hash_to_evm_format(&block.header.prev_hash)
+                };
+
+                let web3_txs = match txs_to_web3_txs(&block, chain_id, height) {
+                    Ok(v) => v,
+                    Err(e) => return Box::pin(async { Err(e) }),
+                };
+
+                let mut b = Block {
+                    hash: Some(block_hash_to_evm_format(&block.header_hash)),
+                    parent_hash,
+                    uncles_hash: Default::default(),
+                    author: proposer,
+                    miner: proposer,
+                    state_root: Default::default(),
+                    transactions_root: block_hash_to_evm_format(
+                        &block.header.tx_merkle.root_hash,
+                    ),
+                    receipts_root: Default::default(),
+                    number: Some(U256::from(height)),
+                    gas_used: receipt.block_gas_used,
+                    gas_limit: self.state.evm.block_gas_limit.get_value(),
+                    extra_data: Default::default(),
+                    logs_bloom: Some(Bloom::from_slice(block.bloom.as_slice())),
+                    timestamp: U256::from(block.header.timestamp),
+                    difficulty: Default::default(),
+                    total_difficulty: Default::default(),
+                    seal_fields: vec![],
+                    uncles: vec![],
+                    transactions: BlockTransactions::Full(web3_txs.clone()),
+                    size: Some(U256::from(
+                        serde_json::to_vec(&block).unwrap_or_default().len(),
+                    )),
+                };
+
                 // Determine if you want to return all block information
                 if is_complete {
-                    let proposer = tm_proposer_to_evm_format(&block.header.proposer);
-
-                    let receipt = if let Some((_, receipt)) =
-                        block.header.receipts.iter().last()
-                    {
-                        receipt
-                    } else {
-                        return Box::pin(async {
-                            Err(new_jsonrpc_error("this block no receipt!", Value::Null))
-                        });
-                    };
-
-                    // prev is null if block is 1
-                    let parent_hash = if block.header.prev_hash.is_empty() {
-                        H256::default()
-                    } else {
-                        block_hash_to_evm_format(&block.header.prev_hash)
-                    };
-
-                    b = Block {
-                        hash: Some(block_hash_to_evm_format(&block.header_hash)),
-                        parent_hash,
-                        uncles_hash: Default::default(),
-                        author: proposer,
-                        miner: proposer,
-                        state_root: Default::default(),
-                        transactions_root: block_hash_to_evm_format(
-                            &block.header.tx_merkle.root_hash,
-                        ),
-                        receipts_root: Default::default(),
-                        number: Some(U256::from(height)),
-                        gas_used: receipt.block_gas_used,
-                        gas_limit: self.state.evm.block_gas_limit.get_value(),
-                        extra_data: Default::default(),
-                        logs_bloom: Some(Bloom::from_slice(block.bloom.as_slice())),
-                        timestamp: U256::from(block.header.timestamp),
-                        difficulty: Default::default(),
-                        total_difficulty: Default::default(),
-                        seal_fields: vec![],
-                        uncles: vec![],
-                        transactions: BlockTransactions::Full(web3_txs),
-                        size: None, //missing data
-                    };
+                    let tx_hashes =
+                        web3_txs.iter().map(|t| t.hash).collect::<Vec<H256>>();
+                    b.transactions = BlockTransactions::Hashes(tx_hashes);
                 }
 
                 op_rb.replace(RichBlock {
@@ -364,6 +344,13 @@ impl EthApi for EthApiImpl {
                 block_hash_to_evm_format(&block.header.prev_hash)
             };
 
+            let receipt = if let Some((_, receipt)) = block.header.receipts.iter().last()
+            {
+                receipt.clone()
+            } else {
+                Default::default()
+            };
+
             let chain_id = self.state.chain_id.get_value();
             let web3_txs = match txs_to_web3_txs(&block, chain_id, height) {
                 Ok(v) => v,
@@ -383,56 +370,37 @@ impl EthApi for EthApiImpl {
                 }
             };
 
-            let b = if is_complete {
-                Block {
-                    hash: Some(block_hash_to_evm_format(&block.header_hash)),
-                    parent_hash,
-                    uncles_hash: Default::default(),
-                    author: proposer,
-                    miner: proposer,
-                    state_root: Default::default(),
-                    transactions_root: block_hash_to_evm_format(
-                        &block.header.tx_merkle.root_hash,
-                    ),
-                    receipts_root: Default::default(),
-                    number: Some(U256::from(height)),
-                    gas_used: Default::default(),
-                    gas_limit: self.state.evm.block_gas_limit.get_value(),
-                    extra_data: Default::default(),
-                    logs_bloom: None,
-                    timestamp: U256::from(block.header.timestamp),
-                    difficulty: Default::default(),
-                    total_difficulty: Default::default(),
-                    seal_fields: vec![],
-                    uncles: vec![],
-                    transactions: BlockTransactions::Full(web3_txs),
-                    size: None,
-                }
-            } else {
-                let tx_hashes = web3_txs.iter().map(|t| t.hash).collect::<Vec<H256>>();
-                Block {
-                    hash: None,
-                    parent_hash: Default::default(),
-                    uncles_hash: Default::default(),
-                    author: Default::default(),
-                    miner: Default::default(),
-                    state_root: Default::default(),
-                    transactions_root: Default::default(),
-                    receipts_root: Default::default(),
-                    number: None,
-                    gas_used: Default::default(),
-                    gas_limit: Default::default(),
-                    extra_data: Default::default(),
-                    logs_bloom: None,
-                    timestamp: Default::default(),
-                    difficulty: Default::default(),
-                    total_difficulty: Default::default(),
-                    seal_fields: vec![],
-                    uncles: vec![],
-                    transactions: BlockTransactions::Hashes(tx_hashes),
-                    size: None,
-                }
+            let mut b = Block {
+                hash: Some(block_hash_to_evm_format(&block.header_hash)),
+                parent_hash,
+                uncles_hash: Default::default(),
+                author: proposer,
+                miner: proposer,
+                state_root: Default::default(),
+                transactions_root: block_hash_to_evm_format(
+                    &block.header.tx_merkle.root_hash,
+                ),
+                receipts_root: Default::default(),
+                number: Some(U256::from(height)),
+                gas_used: receipt.block_gas_used,
+                gas_limit: self.state.evm.block_gas_limit.get_value(),
+                extra_data: Default::default(),
+                logs_bloom: Some(Bloom::from_slice(&block.bloom)),
+                timestamp: U256::from(block.header.timestamp),
+                difficulty: Default::default(),
+                total_difficulty: Default::default(),
+                seal_fields: vec![],
+                uncles: vec![],
+                transactions: BlockTransactions::Full(web3_txs.clone()),
+                size: Some(U256::from(
+                    serde_json::to_vec(&block).unwrap_or_default().len(),
+                )),
             };
+
+            if !is_complete {
+                let tx_hashes = web3_txs.iter().map(|t| t.hash).collect::<Vec<H256>>();
+                b.transactions = BlockTransactions::Hashes(tx_hashes);
+            }
 
             Some(RichBlock {
                 inner: b,
@@ -818,7 +786,9 @@ impl EthApi for EthApiImpl {
                     logs,
                     state_root: None,
                     logs_bloom: Default::default(),
-                    status_code: None,
+                    // Currently failed transactions are not stored,
+                    // so the data found here are successful by default and therefore return 1
+                    status_code: Some(U64::one()),
                 });
             }
         }

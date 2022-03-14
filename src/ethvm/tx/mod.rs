@@ -462,10 +462,14 @@ impl ExecRet {
         }
     }
 
-    pub fn gen_logs<'a>(&'a self, tx_hash: HashValueRef<'a>) -> Vec<LedgerLog> {
+    pub fn gen_logs<'a>(
+        &'a self,
+        tx_hash: HashValueRef<'a>,
+        tx_index: u64,
+    ) -> Vec<LedgerLog> {
         let mut v = Vec::new();
-        for l in self.logs.iter() {
-            v.push(LedgerLog::new_from_eth_log_and_tx_hash(l, tx_hash));
+        for (index, l) in self.logs.iter().enumerate() {
+            v.push(LedgerLog::new(l, tx_hash, index, tx_index));
         }
         v
     }
