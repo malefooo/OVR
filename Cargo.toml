@@ -59,7 +59,7 @@ eth-utils = { version = "0.3.1", features = ["with_common_precompiles"] }
 
 # deps of web3-rpc
 rustc-hex = "2.1.0"
-web3-rpc-core = { git = "https://github.com/Overealityio/web3-rpc-core.git" }
+web3-rpc-core = { git = "https://github.com/Overealityio/web3-rpc-core.git", tag = "v0.1.0" }
 byte-slice-cast = "1.2.0"
 
 [features]

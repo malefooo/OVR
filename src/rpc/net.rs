@@ -1,8 +1,8 @@
 use crate::rpc::error::new_jsonrpc_error;
 use jsonrpc_core::{BoxFuture, Result};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use web3_rpc_core::{types::PeerCount, NetApi};
-use serde::{Deserialize, Serialize};
 
 pub struct NetApiImpl {}
 
