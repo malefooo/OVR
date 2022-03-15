@@ -293,10 +293,11 @@ impl StateBranch {
                     self.tx_hashes_in_process.push(tx_hash.clone());
                     self.block_in_process.txs.push(tx);
 
-                    let mut logs = ret.gen_logs(&tx_hash);
+                    let tx_index = self.tx_hashes_in_process.len() as u64 - 1;
+                    let mut logs = ret.gen_logs(&tx_hash, tx_index);
                     receipt.add_logs(logs.as_mut_slice());
                     receipt.tx_hash = tx_hash.clone();
-                    receipt.tx_index = self.tx_hashes_in_process.len() as u64 - 1;
+                    receipt.tx_index = tx_index;
                     self.block_in_process
                         .header
                         .receipts
@@ -350,6 +351,7 @@ impl StateBranch {
 
         // Calculate the total amount of block gas to be used
         let mut block_gas_used: U256 = U256::zero();
+        let mut log_idx_in_block = 0;
         self.block_in_process
             .header
             .receipts
@@ -361,6 +363,13 @@ impl StateBranch {
         for hash in self.tx_hashes_in_process.iter() {
             if let Some(mut r) = self.block_in_process.header.receipts.get_mut(hash) {
                 r.block_gas_used = block_gas_used;
+
+                // Populate the log_idx_in_block field in the log
+                for log in r.logs.iter_mut() {
+                    log.log_index_in_block = log_idx_in_block;
+                    log_idx_in_block += 1;
+                }
+
                 handle_bloom(&mut b, r.logs.as_slice());
             }
         }
@@ -659,18 +668,20 @@ pub struct Log {
 }
 
 impl Log {
-    pub fn new_from_eth_log_and_tx_hash<'a>(
+    pub fn new<'a>(
         log: &'a EthLog,
         tx_hash: HashValueRef<'a>,
+        log_index_in_tx: usize,
+        tx_index: u64,
     ) -> Self {
         Self {
             address: log.address,
             topics: log.topics.clone(),
             data: log.data.clone(),
             tx_hash: tx_hash.to_owned(),
-            tx_index: 0,
+            tx_index,
             log_index_in_block: 0,
-            log_index_in_tx: 0,
+            log_index_in_tx: log_index_in_tx as u64,
             removed: false,
         }
     }
