@@ -8,7 +8,19 @@
 
 [**Overeality project**](https://github.com/Overealityio/Overeality/blob/main/README.md).
 
-## Usage
+## Front-End Usage
+
+- **Wallet(Metamask) settings**
+  - **Network Name**: Overeality Testnet
+  - **New RPC URL**: https://prod-testnet.prod.overeality.io:8545
+  - **Chain ID**: 9527
+  - **Currency Symbol**: OFUEL
+  - **Block Explorer URL**: https://prod-testnet-blockscout.prod.overeality.io
+  - **OR token address(import it manually)**: 0x681cadfbfa95c3d842cd6af15832c4d506cf5c07
+- **Blockchain browser(Blockscout)**
+  - **url**: https://prod-testnet-blockscout.prod.overeality.io
+
+## Command-Line Usage
 
 Quick start:
 
