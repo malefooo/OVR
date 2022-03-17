@@ -1,13 +1,13 @@
 use crate::{
     common::{
-        block_hash_to_evm_format, block_number_to_height, rollback_to_height,
+        block_hash_to_evm_format, block_number_to_height,
         tm_proposer_to_evm_format, HashValue,
     },
-    ledger::{State, MAIN_BRANCH_NAME},
+    ledger::{State, MAIN_BRANCH_NAME, VsVersion},
     rpc::{
         error::new_jsonrpc_error,
         utils::{
-            filter_block_logs, remove_branch_by_name, rollback_by_height, tx_to_web3_tx,
+            filter_block_logs, tx_to_web3_tx,
             txs_to_web3_txs,
         },
     },
@@ -21,6 +21,7 @@ use jsonrpc_core::{BoxFuture, Result};
 use rlp::{Decodable, Rlp};
 use serde_json::Value;
 use std::result::Result::Err;
+use vsdb::ValueEn;
 use web3_rpc_core::{
     types::{
         Block, BlockNumber, BlockTransactions, Bytes, CallRequest, Filter,
@@ -54,26 +55,14 @@ impl EthApi for EthApiImpl {
         address: H160,
         bn: Option<BlockNumber>,
     ) -> BoxFuture<Result<U256>> {
-        let new_branch_name =
-            match rollback_by_height(bn, None, Some(&self.state.evm), "balance") {
-                Ok(name) => name,
-                Err(e) => {
-                    return Box::pin(async { Err(e) });
-                }
-            };
+        let height = block_number_to_height(bn, None, Some(&self.state.evm));
 
-        let balance = if let Some(balance) = self.state.evm.OFUEL.accounts.get(&address)
-        {
-            balance.balance
-        } else {
-            U256::zero()
-        };
+        let block = self.state.blocks.get(&height);
+        let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
 
-        if let Err(e) =
-            remove_branch_by_name(new_branch_name, None, Some(&self.state.evm))
-        {
-            return Box::pin(async { Err(e) });
-        }
+        let ver = VsVersion::new(height, tx_count as u64);
+        let account = self.state.evm.OFUEL.accounts.get_by_branch_version(&address, MAIN_BRANCH_NAME, ver.encode_value().as_ref().into());
+        let balance = account.map(|x| { x.balance }).unwrap_or(U256::zero());
 
         Box::pin(async move { Ok(balance) })
     }
@@ -209,28 +198,18 @@ impl EthApi for EthApiImpl {
         index: U256,
         bn: Option<BlockNumber>,
     ) -> BoxFuture<Result<H256>> {
-        let new_branch_name =
-            match rollback_by_height(bn, None, Some(&self.state.evm), "storage_at") {
-                Ok(name) => name,
-                Err(e) => {
-                    return Box::pin(async { Err(e) });
-                }
-            };
 
         // TODO: I'm not sure if this is the right thing to do
         let key = (&addr, &H256::from_slice(index.as_byte_slice()));
 
-        let val = if let Some(val) = self.state.evm.OFUEL.storages.get(&key) {
-            val
-        } else {
-            H256::default()
-        };
+        let height = block_number_to_height(bn, None, Some(&self.state.evm));
+        let block = self.state.blocks.get(&height);
+        let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
+        let ver = VsVersion::new(height, tx_count as u64);
 
-        if let Err(e) =
-            remove_branch_by_name(new_branch_name, None, Some(&self.state.evm))
-        {
-            return Box::pin(async { Err(e) });
-        }
+        let storages = self.state.evm.OFUEL.storages.get_by_branch_version(&key, MAIN_BRANCH_NAME, ver.encode_value().as_ref().into());
+
+        let val = storages.unwrap_or_default();
 
         Box::pin(async move { Ok(val) })
     }
@@ -317,23 +296,6 @@ impl EthApi for EthApiImpl {
     ) -> BoxFuture<Result<Option<RichBlock>>> {
         let height = block_number_to_height(Some(bn), None, Some(&self.state.evm));
 
-        let new_branch_name = match rollback_to_height(
-            height,
-            None,
-            Some(&self.state.evm),
-            "block_by_number",
-        ) {
-            Ok(name) => name,
-            Err(e) => {
-                return Box::pin(async move {
-                    Err(new_jsonrpc_error(
-                        "rollback to height",
-                        Value::String(e.to_string()),
-                    ))
-                });
-            }
-        };
-
         let op = if let Some(block) = self.state.blocks.get(&height) {
             let proposer = tm_proposer_to_evm_format(&block.header.proposer);
 
@@ -355,17 +317,6 @@ impl EthApi for EthApiImpl {
             let web3_txs = match txs_to_web3_txs(&block, chain_id, height) {
                 Ok(v) => v,
                 Err(e) => {
-                    // You must delete the branch before returning,
-                    // otherwise the next time you come in,
-                    // the same branch will exist and an error will be reported.
-                    if let Err(e) = remove_branch_by_name(
-                        new_branch_name,
-                        None,
-                        Some(&self.state.evm),
-                    ) {
-                        return Box::pin(async { Err(e) });
-                    }
-
                     return Box::pin(async { Err(e) });
                 }
             };
@@ -410,12 +361,6 @@ impl EthApi for EthApiImpl {
             None
         };
 
-        if let Err(e) =
-            remove_branch_by_name(new_branch_name, None, Some(&self.state.evm))
-        {
-            return Box::pin(async { Err(e) });
-        }
-
         Box::pin(async { Ok(op) })
     }
 
@@ -425,34 +370,27 @@ impl EthApi for EthApiImpl {
         bn: Option<BlockNumber>,
     ) -> BoxFuture<Result<U256>> {
         let height = block_number_to_height(bn, Some(&self.state), None);
-        let new_branch_name = match rollback_to_height(
-            height,
-            Some(&self.state),
-            None,
-            "transaction_count",
-        ) {
-            Ok(name) => name,
-            Err(e) => {
-                return Box::pin(async move {
-                    Err(new_jsonrpc_error(
-                        "rollback to height",
-                        Value::String(e.to_string()),
-                    ))
-                });
+
+        let block = self.state.blocks.get(&height);
+
+        let mut count: usize = 0;
+
+        if let Some(b) = block {
+            for tx in b.txs.iter() {
+                match tx {
+                    Tx::Evm(evm_tx) => {
+                        let (from, _) = evm_tx.get_from_to();
+                        if from.unwrap_or_default() == addr {
+                            count += 1;
+                        }
+                    }
+                    Tx::Native(_) => {
+                        // TODO:
+                    }
+                }
             }
-        };
-
-        let mut nonce = U256::zero();
-
-        if let Some(account) = self.state.evm.OFUEL.accounts.get(&addr) {
-            nonce = account.nonce
         }
-
-        if let Err(e) = remove_branch_by_name(new_branch_name, Some(&self.state), None) {
-            return Box::pin(async { Err(e) });
-        }
-
-        Box::pin(async move { Ok(nonce) })
+        Box::pin(async move { Ok(count.into()) })
     }
 
     fn block_transaction_count_by_hash(
@@ -476,58 +414,23 @@ impl EthApi for EthApiImpl {
     ) -> BoxFuture<Result<Option<U256>>> {
         let height = block_number_to_height(Some(bn), Some(&self.state), None);
 
-        let new_branch_name = match rollback_to_height(
-            height,
-            Some(&self.state),
-            None,
-            "block_transaction_count_by_number",
-        ) {
-            Ok(name) => name,
-            Err(e) => {
-                return Box::pin(async move {
-                    Err(new_jsonrpc_error(
-                        "rollback to height",
-                        Value::String(e.to_string()),
-                    ))
-                });
-            }
-        };
-
         let tx_count = if let Some(block) = self.state.blocks.get(&height) {
             block.txs.len()
         } else {
             Default::default()
         };
-
-        if let Err(e) =
-            remove_branch_by_name(new_branch_name, None, Some(&self.state.evm))
-        {
-            return Box::pin(async { Err(e) });
-        }
-
         Box::pin(async move { Ok(Some(U256::from(tx_count))) })
     }
 
     fn code_at(&self, addr: H160, bn: Option<BlockNumber>) -> BoxFuture<Result<Bytes>> {
-        let new_branch_name =
-            match rollback_by_height(bn, None, Some(&self.state.evm), "code_at") {
-                Ok(name) => name,
-                Err(e) => {
-                    return Box::pin(async { Err(e) });
-                }
-            };
+        let height = block_number_to_height(bn, None, Some(&self.state.evm));
+        let block = self.state.blocks.get(&height);
+        let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
+        let ver = VsVersion::new(height, tx_count as u64);
 
-        let bytes = if let Some(account) = self.state.evm.OFUEL.accounts.get(&addr) {
-            account.code
-        } else {
-            Default::default()
-        };
+        let account = self.state.evm.OFUEL.accounts.get_by_branch_version(&addr, MAIN_BRANCH_NAME, ver.encode_value().as_ref().into());
 
-        if let Err(e) =
-            remove_branch_by_name(new_branch_name, None, Some(&self.state.evm))
-        {
-            return Box::pin(async { Err(e) });
-        }
+        let bytes = account.map(|x| { x.code }).or_else(|| Some(Default::default())).unwrap();
 
         Box::pin(async { Ok(Bytes::new(bytes)) })
     }
@@ -701,23 +604,6 @@ impl EthApi for EthApiImpl {
         index: Index,
     ) -> BoxFuture<Result<Option<Transaction>>> {
         let height = block_number_to_height(Some(bn), Some(&self.state), None);
-        let new_branch_name = match rollback_to_height(
-            height,
-            Some(&self.state),
-            None,
-            "transaction_by_block_number_and_index",
-        ) {
-            Ok(name) => name,
-            Err(e) => {
-                return Box::pin(async move {
-                    Err(new_jsonrpc_error(
-                        "rollback to height",
-                        Value::String(e.to_string()),
-                    ))
-                });
-            }
-        };
-
         let mut transaction = None;
 
         if let Some(block) = self.state.blocks.get(&height) {
@@ -737,12 +623,6 @@ impl EthApi for EthApiImpl {
                     }
                 }
             }
-        }
-
-        if let Err(e) =
-            remove_branch_by_name(new_branch_name, None, Some(&self.state.evm))
-        {
-            return Box::pin(async { Err(e) });
         }
 
         Box::pin(async { Ok(transaction) })

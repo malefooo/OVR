@@ -1,64 +1,16 @@
 use crate::{
-    common::{block_number_to_height, rollback_to_height, BlockHeight},
+    common::{BlockHeight},
     ledger::Block,
     rpc::error::new_jsonrpc_error,
     tx::Tx,
-    {ethvm::State as EvmState, ledger::State as LedgerState},
 };
 use ethereum_types::{H256, U256, U64};
 use primitive_types::H512;
 use rustc_hex::ToHex;
 use serde_json::Value;
-use vsdb::{BranchName, VsMgmt};
 use web3_rpc_core::types::{
-    BlockNumber, Bytes, Filter, FilteredParams, Log as Web3Log, Transaction,
+    Bytes, Filter, FilteredParams, Log as Web3Log, Transaction,
 };
-
-pub fn rollback_by_height(
-    bn: Option<BlockNumber>,
-    ledger_state: Option<&LedgerState>,
-    evm_state: Option<&EvmState>,
-    prefix: &str,
-) -> jsonrpc_core::Result<String> {
-    let height = block_number_to_height(bn, ledger_state, evm_state);
-    let new_branch_name = rollback_to_height(height, ledger_state, evm_state, prefix)
-        .map_err(|e| {
-            new_jsonrpc_error("rollback by height error", Value::String(e.to_string()))
-        })?;
-    Ok(new_branch_name)
-}
-
-pub fn remove_branch_by_name(
-    branch_name: String,
-    ledger_state: Option<&LedgerState>,
-    evm_state: Option<&EvmState>,
-) -> jsonrpc_core::Result<()> {
-    if let Some(ledger_state) = ledger_state {
-        ledger_state
-            .branch_remove(BranchName::from(branch_name.as_str()))
-            .map_err(|e| {
-                new_jsonrpc_error(
-                    "ledger state remove branch error",
-                    Value::String(e.to_string()),
-                )
-            })?;
-        return Ok(());
-    }
-
-    if let Some(evm_state) = evm_state {
-        evm_state
-            .branch_remove(BranchName::from(branch_name.as_str()))
-            .map_err(|e| {
-                new_jsonrpc_error(
-                    "evm state remove branch error",
-                    Value::String(e.to_string()),
-                )
-            })?;
-        return Ok(());
-    }
-
-    Ok(())
-}
 
 pub fn txs_to_web3_txs(
     block: &Block,
