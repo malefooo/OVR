@@ -369,28 +369,16 @@ impl EthApi for EthApiImpl {
         addr: H160,
         bn: Option<BlockNumber>,
     ) -> BoxFuture<Result<U256>> {
-        let height = block_number_to_height(bn, Some(&self.state), None);
-
+        let height = block_number_to_height(bn, None, Some(&self.state.evm));
         let block = self.state.blocks.get(&height);
+        let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
+        let ver = VsVersion::new(height, tx_count as u64);
 
-        let mut count: usize = 0;
+        let account = self.state.evm.OFUEL.accounts.get_by_branch_version(&addr, MAIN_BRANCH_NAME, ver.encode_value().as_ref().into());
 
-        if let Some(b) = block {
-            for tx in b.txs.iter() {
-                match tx {
-                    Tx::Evm(evm_tx) => {
-                        let (from, _) = evm_tx.get_from_to();
-                        if from.unwrap_or_default() == addr {
-                            count += 1;
-                        }
-                    }
-                    Tx::Native(_) => {
-                        // TODO:
-                    }
-                }
-            }
-        }
-        Box::pin(async move { Ok(count.into()) })
+        let nonce = account.map(|x| { x.nonce }).unwrap_or(U256::zero());
+
+        Box::pin(async move { Ok(nonce) })
     }
 
     fn block_transaction_count_by_hash(
