@@ -104,6 +104,21 @@ destroy_prodenv:
 show_prodenv:
 	ovr dev -i -n prodenv
 
+######################################################################
+
+# Mainnet_join_node:
+# 	bash tools/testnet/add_fullnode.sh mainnet
+
+Testnet_join_node:
+	bash tools/testnet/add_fullnode.sh testnet
+
+Testnet_start_node:
+	bash tools/testnet/run_fullnode.sh
+
+Testnet_stop_node:
+	bash tools/testnet/kill_fullnode.sh
+
+######################################################################
 
 # CI 
 ci_build_binary_rust_base:
