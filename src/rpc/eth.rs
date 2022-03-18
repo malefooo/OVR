@@ -1,15 +1,12 @@
 use crate::{
     common::{
-        block_hash_to_evm_format, block_number_to_height,
-        tm_proposer_to_evm_format, HashValue,
+        block_hash_to_evm_format, block_number_to_height, tm_proposer_to_evm_format,
+        HashValue,
     },
-    ledger::{State, MAIN_BRANCH_NAME, VsVersion},
+    ledger::{State, VsVersion, MAIN_BRANCH_NAME},
     rpc::{
         error::new_jsonrpc_error,
-        utils::{
-            filter_block_logs, tx_to_web3_tx,
-            txs_to_web3_txs,
-        },
+        utils::{filter_block_logs, tx_to_web3_tx, txs_to_web3_txs},
     },
     tx::Tx,
     EvmTx,
@@ -61,8 +58,12 @@ impl EthApi for EthApiImpl {
         let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
 
         let ver = VsVersion::new(height, tx_count as u64);
-        let account = self.state.evm.OFUEL.accounts.get_by_branch_version(&address, MAIN_BRANCH_NAME, ver.encode_value().as_ref().into());
-        let balance = account.map(|x| { x.balance }).unwrap_or(U256::zero());
+        let account = self.state.evm.OFUEL.accounts.get_by_branch_version(
+            &address,
+            MAIN_BRANCH_NAME,
+            ver.encode_value().as_ref().into(),
+        );
+        let balance = account.map(|x| x.balance).unwrap_or(U256::zero());
 
         Box::pin(async move { Ok(balance) })
     }
@@ -198,7 +199,6 @@ impl EthApi for EthApiImpl {
         index: U256,
         bn: Option<BlockNumber>,
     ) -> BoxFuture<Result<H256>> {
-
         // TODO: I'm not sure if this is the right thing to do
         let key = (&addr, &H256::from_slice(index.as_byte_slice()));
 
@@ -207,7 +207,11 @@ impl EthApi for EthApiImpl {
         let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
         let ver = VsVersion::new(height, tx_count as u64);
 
-        let storages = self.state.evm.OFUEL.storages.get_by_branch_version(&key, MAIN_BRANCH_NAME, ver.encode_value().as_ref().into());
+        let storages = self.state.evm.OFUEL.storages.get_by_branch_version(
+            &key,
+            MAIN_BRANCH_NAME,
+            ver.encode_value().as_ref().into(),
+        );
 
         let val = storages.unwrap_or_default();
 
@@ -374,9 +378,13 @@ impl EthApi for EthApiImpl {
         let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
         let ver = VsVersion::new(height, tx_count as u64);
 
-        let account = self.state.evm.OFUEL.accounts.get_by_branch_version(&addr, MAIN_BRANCH_NAME, ver.encode_value().as_ref().into());
+        let account = self.state.evm.OFUEL.accounts.get_by_branch_version(
+            &addr,
+            MAIN_BRANCH_NAME,
+            ver.encode_value().as_ref().into(),
+        );
 
-        let nonce = account.map(|x| { x.nonce }).unwrap_or(U256::zero());
+        let nonce = account.map(|x| x.nonce).unwrap_or(U256::zero());
 
         Box::pin(async move { Ok(nonce) })
     }
@@ -416,9 +424,16 @@ impl EthApi for EthApiImpl {
         let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
         let ver = VsVersion::new(height, tx_count as u64);
 
-        let account = self.state.evm.OFUEL.accounts.get_by_branch_version(&addr, MAIN_BRANCH_NAME, ver.encode_value().as_ref().into());
+        let account = self.state.evm.OFUEL.accounts.get_by_branch_version(
+            &addr,
+            MAIN_BRANCH_NAME,
+            ver.encode_value().as_ref().into(),
+        );
 
-        let bytes = account.map(|x| { x.code }).or_else(|| Some(Default::default())).unwrap();
+        let bytes = account
+            .map(|x| x.code)
+            .or_else(|| Some(Default::default()))
+            .unwrap();
 
         Box::pin(async { Ok(Bytes::new(bytes)) })
     }

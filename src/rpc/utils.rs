@@ -1,16 +1,9 @@
-use crate::{
-    common::{BlockHeight},
-    ledger::Block,
-    rpc::error::new_jsonrpc_error,
-    tx::Tx,
-};
+use crate::{common::BlockHeight, ledger::Block, rpc::error::new_jsonrpc_error, tx::Tx};
 use ethereum_types::{H256, U256, U64};
 use primitive_types::H512;
 use rustc_hex::ToHex;
 use serde_json::Value;
-use web3_rpc_core::types::{
-    Bytes, Filter, FilteredParams, Log as Web3Log, Transaction,
-};
+use web3_rpc_core::types::{Bytes, Filter, FilteredParams, Log as Web3Log, Transaction};
 
 pub fn txs_to_web3_txs(
     block: &Block,
