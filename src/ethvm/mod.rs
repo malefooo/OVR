@@ -46,6 +46,8 @@ impl State {
         req: CallRequest,
         bn: Option<BlockNumber>,
     ) -> Result<CallContractResp> {
+        static U64_MAX: Lazy<U256> = Lazy::new(|| U256::from(u64::MAX));
+
         // Operation Type
         enum Operation {
             Call,
@@ -64,12 +66,13 @@ impl State {
         let data = req.data.unwrap_or_default();
 
         // This parameter is used as the divisor and cannot be 0
-        let gas_price = req.gas_price.unwrap_or_else(U256::one).as_u64();
         let gas = if let Some(gas) = req.gas {
-            gas.as_u64()
+            alt!(gas > *U64_MAX, u64::MAX, gas.as_u64())
         } else {
             u64::MAX
         };
+        let gas_price = req.gas_price.unwrap_or_else(U256::one);
+        let gas_price = alt!(gas_price > *U64_MAX, u64::MAX, gas_price.as_u64());
         let gas_limit = gas.checked_div(gas_price).unwrap(); //safe
 
         let height = block_number_to_height(bn, None, Some(self));

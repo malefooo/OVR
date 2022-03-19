@@ -40,8 +40,7 @@ ovr dev --env-destroy
 Top-level overview:
 
 ```shell
-ovr 0.3.x
-OVR development team, fanhui.x@gmail.com
+ovr
 Official implementations of the Overeality project.
 
 USAGE:
