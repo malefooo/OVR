@@ -23,13 +23,15 @@ use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs, io::ErrorKind, mem, sync::Arc};
 use vsdb::{
     merkle::{MerkleTree, MerkleTreeStore},
-    BranchName, MapxOrd, OrphanVs, ParentBranchName, ValueEn, ValueEnDe, Vecx, Vs,
-    VsMgmt, INITIAL_VERSION,
+    BranchName, MapxOrd, OrphanVs, ParentBranchName, ValueDe, ValueEn, Vecx, Vs, VsMgmt,
 };
 
 pub const MAIN_BRANCH_NAME: BranchName = BranchName(b"Main");
 const DELIVER_TX_BRANCH_NAME: BranchName = BranchName(b"DeliverTx");
 const CHECK_TX_BRANCH_NAME: BranchName = BranchName(b"CheckTx");
+
+const VER_MARK_CHECK_TX: u64 = 0;
+const VER_MARK_DELIVER_TX: u64 = 1;
 
 static LEDGER_SNAPSHOT_PATH: Lazy<String> = Lazy::new(|| {
     let dir = format!("{}/overeality/ledger", vsdb::vsdb_get_custom_dir());
@@ -61,7 +63,8 @@ impl Ledger {
         state.branch_set_default(MAIN_BRANCH_NAME).c(d!())?;
 
         // ensure we have an initial version
-        state.version_create(INITIAL_VERSION).c(d!())?;
+        let initial_ver = VsVersion::default().encode_value();
+        state.version_create(initial_ver.as_ref().into()).c(d!())?;
 
         state.chain_id.set_value(chain_id).c(d!())?;
         state.chain_name.set_value(chain_name).c(d!())?;
@@ -115,7 +118,7 @@ impl Ledger {
         timestamp: u64,
         is_loading: bool,
     ) -> Result<()> {
-        let mut main = self.main.write();
+        let main = self.main.write();
         let mut deliver_tx = self.deliver_tx.write();
         let mut check_tx = self.check_tx.write();
 
@@ -141,8 +144,9 @@ impl Ledger {
             .c(d!())?;
 
         if !is_loading {
-            main.prepare_next_block(proposer.clone(), timestamp)
-                .c(d!())?;
+            // No data will be directly written to the main branch,
+            // so do NOT call this on it to avoid dup-version issues.
+            // main.prepare_next_block(proposer.clone(), timestamp).c(d!())?;
             deliver_tx
                 .prepare_next_block(proposer.clone(), timestamp)
                 .c(d!())?;
@@ -230,20 +234,23 @@ impl StateBranch {
         let b = self.branch.clone();
         let b = b.as_slice().into();
 
-        let ver = VsVersion::new(self.block_in_process.header.height, 0);
+        let ver = if b == DELIVER_TX_BRANCH_NAME {
+            self.update_evm_aux(b);
+            VsVersion::new_with_default_mark(self.block_in_process.header.height, 0)
+        } else {
+            VsVersion::new(self.block_in_process.header.height, 0, VER_MARK_CHECK_TX)
+        };
+
         self.state
             .version_create_by_branch(ver.encode_value().as_ref().into(), b)
             .c(d!())?;
-
-        if b == MAIN_BRANCH_NAME {
-            self.update_evm_aux(b);
-        }
 
         Ok(())
     }
 
     fn clean_up(&self) -> Result<()> {
-        let ver = VsVersion::new(1 + self.last_block_height(), 0).encode_value();
+        let ver = VsVersion::new_with_default_mark(1 + self.last_block_height(), 0)
+            .encode_value();
         let ver = ver.as_ref().into();
 
         let br = self.branch.clone();
@@ -262,9 +269,15 @@ impl StateBranch {
         let b = self.branch.clone();
         let b = b.as_slice().into();
 
+        let mark = if b == CHECK_TX_BRANCH_NAME {
+            VER_MARK_CHECK_TX
+        } else {
+            VER_MARK_DELIVER_TX
+        };
         let ver = VsVersion::new(
             self.block_in_process.header.height,
             1 + self.tx_hashes_in_process.len() as u64,
+            mark,
         );
         self.state
             .version_create_by_branch(ver.encode_value().as_ref().into(), b)
@@ -277,7 +290,7 @@ impl StateBranch {
                 if !self.state.branch_has_versions(b) {
                     self.state
                         .version_create_by_branch(
-                            VsVersion::default().encode_value().as_ref().into(),
+                            VsVersion::new(0, 0, mark).encode_value().as_ref().into(),
                             b,
                         )
                         .c(d!())?;
@@ -334,6 +347,14 @@ impl StateBranch {
     // NOTE:
     // - Only triggered by the 'main' branch of the `Ledger`
     fn commit(&mut self) -> Result<()> {
+        let ver = VsVersion::new_with_default_mark(
+            self.block_in_process.header.height,
+            u64::MAX,
+        );
+        self.state
+            .version_create(ver.encode_value().as_ref().into())
+            .c(d!())?;
+
         // Make it never empty,
         // thus the root hash will always exist
         self.tx_hashes_in_process.push(hash_sha3_256(&[&[]]));
@@ -445,7 +466,7 @@ impl StateBranch {
     #[inline(always)]
     fn load_from_snapshot() -> Result<Option<Self>> {
         match fs::read(&*LEDGER_SNAPSHOT_PATH) {
-            Ok(c) => StateBranch::decode(c.as_slice()).c(d!()).map(Some),
+            Ok(c) => StateBranch::decode_value(c.as_slice()).c(d!()).map(Some),
             Err(e) => {
                 if let ErrorKind::NotFound = e.kind() {
                     Ok(None)
@@ -458,7 +479,7 @@ impl StateBranch {
 
     #[inline(always)]
     fn write_snapshot(&self) -> Result<()> {
-        let contents = self.encode();
+        let contents = self.encode_value();
         fs::write(&*LEDGER_SNAPSHOT_PATH, &contents).c(d!())
     }
 }
@@ -590,20 +611,26 @@ pub struct VsVersion {
     // - starting from 1
     // - 0 is reserved for the block itself
     tx_position: u64,
+    extra_mark: u64,
 }
 
 impl VsVersion {
-    pub fn new(block_height: BlockHeight, tx_position: u64) -> Self {
+    pub fn new(block_height: BlockHeight, tx_position: u64, extra_mark: u64) -> Self {
         Self {
             block_height,
             tx_position,
+            extra_mark,
         }
+    }
+
+    pub fn new_with_default_mark(block_height: BlockHeight, tx_position: u64) -> Self {
+        Self::new(block_height, tx_position, VER_MARK_DELIVER_TX)
     }
 }
 
 impl Default for VsVersion {
     fn default() -> Self {
-        Self::new(0, 0)
+        Self::new_with_default_mark(0, 0)
     }
 }
 

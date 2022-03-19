@@ -59,6 +59,13 @@ pub struct DaemonCfg {
     )]
     pub vsdb_base_dir: Option<String>,
     #[clap(
+        short = 'D',
+        long,
+        default_value_t = 2000,
+        help = "How many versions shoule be always keeped"
+    )]
+    pub vsdb_prune_cap: usize,
+    #[clap(
         short = 'H',
         long,
         help = "A path where tendermint will run in [default: ~/.tendermint]"

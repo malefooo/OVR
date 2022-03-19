@@ -3,19 +3,24 @@ mod precompile;
 pub mod tx;
 
 use crate::{
-    common::{block_number_to_height, rollback_to_height, BlockHeight},
+    common::{block_number_to_height, BlockHeight},
     ethvm::{impls::stack::OvrStackState, precompile::PRECOMPILE_SET},
+    ledger::{VsVersion, MAIN_BRANCH_NAME},
 };
 use evm::{
     executor::stack::{StackExecutor, StackSubstateMetadata},
     ExitReason,
 };
 use impls::backend::OvrBackend;
+use once_cell::sync::Lazy;
 use primitive_types::{H160, H256, U256};
 use ruc::*;
 use serde::{Deserialize, Serialize};
 use tx::token::Erc20Like;
-use vsdb::{BranchName, MapxOrd, OrphanVs, Vs, VsMgmt};
+use vsdb::{
+    basic::orphan::Orphan, BranchName, MapxOrd, OrphanVs, ParentBranchName, ValueEn, Vs,
+    VsMgmt,
+};
 use web3_rpc_core::types::{BlockNumber, CallRequest};
 
 #[allow(non_snake_case)]
@@ -69,8 +74,7 @@ impl State {
 
         let height = block_number_to_height(bn, None, Some(self));
 
-        let new_branch_name =
-            rollback_to_height(height, None, Some(self), "call_contract")?;
+        let branch_tmp = snapshot_at_height(height, self, "call_contract")?;
 
         let backend = OvrBackend {
             branch: branch_name,
@@ -106,7 +110,8 @@ impl State {
             gas_used: executor.used_gas(),
         };
 
-        self.branch_remove(BranchName::from(new_branch_name.as_str()))?;
+        self.branch_remove(BranchName::from(branch_tmp.as_str()))?;
+
         Ok(cc_resp)
     }
 
@@ -203,4 +208,36 @@ pub struct CallContractResp {
     pub evm_resp: ExitReason,
     pub data: Vec<u8>,
     pub gas_used: u64,
+}
+
+fn snapshot_at_height(
+    height: BlockHeight,
+    evm_state: &State,
+    prefix: &str,
+) -> Result<String> {
+    static TMP_ID: Lazy<Orphan<u64>> = Lazy::new(Orphan::default);
+
+    if height > 0 {
+        let ver = VsVersion::new_with_default_mark(height, u64::MAX);
+
+        let mut id = TMP_ID.get_mut();
+        let ver_tmp = format!("{}_{}_{}", prefix, height, *id);
+        let branch_tmp = format!("{}_{}_{}", prefix, height, *id);
+        *id += 1;
+
+        evm_state.branch_create_by_base_branch_version(
+            BranchName::from(branch_tmp.as_str()),
+            ParentBranchName::from(MAIN_BRANCH_NAME.0),
+            ver.encode_value().as_ref().into(),
+        )?;
+
+        evm_state.version_create_by_branch(
+            ver_tmp.encode_value().as_ref().into(),
+            BranchName::from(branch_tmp.as_str()),
+        )?;
+
+        Ok(branch_tmp)
+    } else {
+        Err(eg!("block height cannot be 0"))
+    }
 }

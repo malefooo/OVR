@@ -79,7 +79,7 @@ build_release_musl: tendermint
 	$(call collect,release,x86_64-unknown-linux-musl)
 
 tendermint: submod
-	-@ rm $(shell which tendermint)
+	-@ rm $(shell which tendermint) ~/.cargo/bin/ovr*
 	cd tools/submodules/tendermint && $(MAKE) install
 
 submod:
@@ -89,17 +89,17 @@ prodenv:
 	bash tools/create_prod_env.sh
 
 run_prodenv:
-	bash tools/create_prod_env.sh prodenv
-	ovr dev -s -n prodenv
+	@ bash tools/create_prod_env.sh prodenv
+	@ ovr dev -s -n prodenv
 
 start_prodenv:
-	ovr dev -s -n prodenv
+	@ ovr dev -s -n prodenv
 
 stop_prodenv:
-	ovr dev -S -n prodenv
+	@ ovr dev -S -n prodenv
 
-destroy_prodenv:
-	ovr dev -d -n prodenv
+destroy_prodenv: stop_prodenv
+	@ ovr dev -d -n prodenv
 
 show_prodenv:
 	ovr dev -i -n prodenv
@@ -109,7 +109,7 @@ show_prodenv:
 # Mainnet_join_node:
 # 	bash tools/testnet/add_fullnode.sh mainnet
 
-Testnet_join_node:
+Testnet_join_node: Testnet_stop_node release
 	bash tools/testnet/add_fullnode.sh testnet
 
 Testnet_start_node:

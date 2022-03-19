@@ -57,7 +57,7 @@ impl EthApi for EthApiImpl {
         let block = self.state.blocks.get(&height);
         let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
 
-        let ver = VsVersion::new(height, tx_count as u64);
+        let ver = VsVersion::new_with_default_mark(height, tx_count as u64);
         let account = self.state.evm.OFUEL.accounts.get_by_branch_version(
             &address,
             MAIN_BRANCH_NAME,
@@ -205,7 +205,7 @@ impl EthApi for EthApiImpl {
         let height = block_number_to_height(bn, None, Some(&self.state.evm));
         let block = self.state.blocks.get(&height);
         let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
-        let ver = VsVersion::new(height, tx_count as u64);
+        let ver = VsVersion::new_with_default_mark(height, tx_count as u64);
 
         let storages = self.state.evm.OFUEL.storages.get_by_branch_version(
             &key,
@@ -376,7 +376,7 @@ impl EthApi for EthApiImpl {
         let height = block_number_to_height(bn, None, Some(&self.state.evm));
         let block = self.state.blocks.get(&height);
         let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
-        let ver = VsVersion::new(height, tx_count as u64);
+        let ver = VsVersion::new_with_default_mark(height, tx_count as u64);
 
         let account = self.state.evm.OFUEL.accounts.get_by_branch_version(
             &addr,
@@ -422,7 +422,7 @@ impl EthApi for EthApiImpl {
         let height = block_number_to_height(bn, None, Some(&self.state.evm));
         let block = self.state.blocks.get(&height);
         let tx_count = block.map(|b| b.txs.len()).unwrap_or(0);
-        let ver = VsVersion::new(height, tx_count as u64);
+        let ver = VsVersion::new_with_default_mark(height, tx_count as u64);
 
         let account = self.state.evm.OFUEL.accounts.get_by_branch_version(
             &addr,

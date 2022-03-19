@@ -19,8 +19,8 @@ tm_home="${HOME}/.tendermint"
 app_log_path="/tmp/testnet_app.log"
 tendermint_log_path="/tmp/testnet_tendermint.log"
 
-ovr daemon -d ${tm_home}/__vsdb__ >${app_log_path} 2>&1 &
+ovr daemon -d ${tm_home}/__vsdb__ >>${app_log_path} 2>&1 &
 echo "**** ovr-daemon log path: ${app_log_path}"
 
-tendermint node --home ${tm_home} >${tendermint_log_path} 2>&1 &
+tendermint node --home ${tm_home} >>${tendermint_log_path} 2>&1 &
 echo "**** Tendermint log path: ${tendermint_log_path}"

@@ -9,7 +9,7 @@ use crate::{
     cfg::DaemonCfg as Cfg,
     common::{BlockHeight, HashValue},
     ethvm::{tx::inital_create2, OvrAccount},
-    ledger::{Ledger, Receipt},
+    ledger::{Ledger, Receipt, MAIN_BRANCH_NAME},
     tx::Tx,
     InitalState,
 };
@@ -22,7 +22,7 @@ use tmtypes::abci::{
     RequestInitChain, ResponseBeginBlock, ResponseCheckTx, ResponseCommit,
     ResponseDeliverTx, ResponseEndBlock, ResponseInfo, ResponseInitChain,
 };
-use vsdb::MapxOrd;
+use vsdb::{MapxOrd, VsMgmt};
 
 #[derive(Clone)]
 pub struct App {
@@ -184,7 +184,15 @@ impl Application for App {
     }
 
     // TODO: staking related logic
-    fn end_block(&self, _req: RequestEndBlock) -> ResponseEndBlock {
+    fn end_block(&self, req: RequestEndBlock) -> ResponseEndBlock {
+        // prune outdated versions per 200 blocks
+        if 199 == req.height % 200 {
+            pnk!(
+                self.ledger
+                    .state
+                    .prune_by_branch(MAIN_BRANCH_NAME, Some(self.cfg.vsdb_prune_cap))
+            );
+        }
         ResponseEndBlock::default()
     }
 

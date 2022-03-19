@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    ledger::{Log, VsVersion, MAIN_BRANCH_NAME},
+    ledger::Log,
     {ethvm::State as EvmState, ledger::State as LedgerState},
 };
 use ethereum_types::{Bloom, BloomInput};
@@ -9,7 +9,6 @@ use primitive_types::{H160, H256, U256};
 use ruc::*;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_256};
-use vsdb::{BranchName, ParentBranchName, ValueEn, VsMgmt};
 use web3_rpc_core::types::BlockNumber;
 
 pub(crate) type BlockHeight = u64;
@@ -70,46 +69,6 @@ impl InitalContract {
 pub struct InitalState {
     pub addr_to_amount: BTreeMap<H160, U256>,
     pub inital_contracts: Vec<InitalContract>,
-}
-
-pub fn rollback_to_height(
-    height: BlockHeight,
-    ledger_state: Option<&LedgerState>,
-    evm_state: Option<&EvmState>,
-    prefix: &str,
-) -> Result<String> {
-    let new_branch_name;
-
-    if height > 0 {
-        let ver = VsVersion::new(height + 1, 0);
-        new_branch_name = format!("{}_{}", prefix, height + 1);
-
-        if let Some(evm_state) = evm_state {
-            evm_state.branch_create_by_base_branch(
-                BranchName::from(new_branch_name.as_str()),
-                ParentBranchName::from(MAIN_BRANCH_NAME.0),
-            )?;
-
-            evm_state.version_create_by_branch(
-                ver.encode_value().as_ref().into(),
-                BranchName::from(new_branch_name.as_str()),
-            )?;
-        } else if let Some(ledger_state) = ledger_state {
-            ledger_state.branch_create_by_base_branch(
-                BranchName::from(new_branch_name.as_str()),
-                ParentBranchName::from(MAIN_BRANCH_NAME.0),
-            )?;
-
-            ledger_state.version_create_by_branch(
-                ver.encode_value().as_ref().into(),
-                BranchName::from(new_branch_name.as_str()),
-            )?;
-        }
-    } else {
-        return Err(eg!("block height cannot be 0"));
-    };
-
-    Ok(new_branch_name)
 }
 
 pub fn block_number_to_height(

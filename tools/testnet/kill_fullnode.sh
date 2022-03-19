@@ -20,10 +20,11 @@ tm_mark="tendermint node --home ${tm_home}"
 ovr_mark="ovr daemon -d ${tm_home}/__vsdb__"
 
 for mark in "${tm_home}" "${ovr_mark}"; do
-    ps ax -o pid,args \
-        | grep "${mark}" \
-        | grep -v 'grep' \
-        | grep -Eo '^ *[0-9]+' \
-        | sed 's/ //g' \
-        | xargs kill -9
+	for pid in $(ps ax -o pid,args \
+		| grep "${mark}" \
+		| grep -v 'grep' \
+		| grep -Eo '^ *[0-9]+' \
+		| sed 's/ //g'); do
+        kill -9 $pid
+	done
 done

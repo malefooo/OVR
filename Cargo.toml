@@ -21,7 +21,7 @@ path = "src/bins/ovrd/main.rs"
 [dependencies]
 btm = "0.6.5"
 ruc = { version = "1.0.7", features = ["cmd"] }
-vsdb = { version = "0.18.0", default-features = false, features = ["derive", "merkle", "msgpack_codec"] }
+vsdb = { version = "0.20.1", default-features = false, features = ["derive", "merkle", "msgpack_codec"] }
 
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
 
@@ -55,7 +55,7 @@ evm = { version = "0.33.1", default-features = false, features = ["with-serde"] 
 ethereum = { version = "0.11.1", default-features = false, features = ["with-serde"] }
 primitive-types = { version = "0.10.1", default-features = false, features = ["rlp", "byteorder", "serde"] }
 ethereum-types = "0.12"
-eth-utils = { version = "0.3.1", features = ["with_common_precompiles"] }
+eth-utils = { version = "0.3.3", features = ["with_common_precompiles"] }
 
 # deps of web3-rpc
 rustc-hex = "2.1.0"
