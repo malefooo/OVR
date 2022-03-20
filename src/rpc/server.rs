@@ -1,3 +1,4 @@
+use super::middle::request_middle;
 use std::{net::SocketAddr, thread};
 
 use crate::ledger::State;
@@ -36,6 +37,7 @@ impl Web3ServerBuilder {
             io.extend_with(web3.to_delegate());
 
             let s = jsonrpc_http_server::ServerBuilder::new(io.clone())
+                .request_middleware(request_middle)
                 .start_http(http)
                 .expect("failed to create http server");
             v.push(s);

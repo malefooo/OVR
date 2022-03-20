@@ -62,6 +62,8 @@ rustc-hex = "2.1.0"
 web3-rpc-core = { git = "https://github.com/Overealityio/web3-rpc-core.git", tag = "v0.1.0" }
 byte-slice-cast = "1.2.0"
 
+http = "0.2.6"
+
 [features]
 default = ["vsdb_sled"]
 vsdb_sled = ["vsdb/sled_engine"]
